@@ -19,7 +19,6 @@ CACHE_FILENAME = (__file__.rsplit('.py', 1)[0] + '.cache')
 
 
 def send_slack_message(message):
-    print('send:', message)
     ret = requests.post(
         SLACK_WEBHOOK_URL, data=json.dumps({'text': message}),
         headers={'Content-Type': 'application/json'})
@@ -195,10 +194,14 @@ def fetch_logs_and_publish_forever():
         print('data:', len(data), 'new:', not_published_yet)
         already_published = data
 
+        a_while_ago = (datetime.datetime.now() - datetime.timedelta(hours=4))
         for row in sorted(not_published_yet):
-            send_slack_message(row)
+            if row['datetime'] < a_while_ago:
+                print('skipping old:', row)
+            else:
+                send_slack_message(row)
+                print('sent message:', row)
 
-        print('.')
         time.sleep(300)
 
 
