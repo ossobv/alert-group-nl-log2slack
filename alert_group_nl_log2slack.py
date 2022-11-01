@@ -196,7 +196,7 @@ def fetch_logs_and_publish_forever():
 
         a_while_ago = (datetime.datetime.now() - datetime.timedelta(hours=4))
         for row in sorted(not_published_yet):
-            if row['datetime'] < a_while_ago:
+            if row < a_while_ago.strftime('%Y-%m-%d %H:%M:%S'):
                 print('skipping old:', row)
             else:
                 send_slack_message(row)
