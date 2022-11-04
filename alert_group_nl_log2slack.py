@@ -221,7 +221,7 @@ def fetch_logs_and_publish_forever():
 
         data = set(fetch_logs_with_retry())
         not_published_yet = (data - already_published)
-        print('data:', len(data), 'new:', not_published_yet)
+        print(f'data count: {len(data)}, new: {not_published_yet}')
         already_published = data
 
         a_while_ago = (datetime.datetime.now() - datetime.timedelta(hours=4))
