@@ -161,10 +161,6 @@ def fix_dicts_who_did_what(data):
     return new_data
 
 
-def filter_only_on_off(data):
-    return [i for i in data if i['Alrm'] in ('IN', 'UIT')]
-
-
 def to_records(data):
     new_data = []
     assert all(i['Aansluiting'] == data[0]['Aansluiting'] for i in data), data
