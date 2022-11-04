@@ -6,6 +6,7 @@ import time
 import sys
 from contextlib import suppress
 from hashlib import md5
+from traceback import print_exc
 
 from bs4 import BeautifulSoup
 import requests
@@ -182,6 +183,24 @@ def fetch_logs():
     return data
 
 
+def fetch_logs_with_retry():
+    max_try_time = 1800  # 30 mins
+    t0 = time.time()
+
+    while True:
+        try:
+            return fetch_logs()
+        except Exception:
+            td = time() - t0
+            if td >= max_try_time:
+                raise
+            print_exc()
+            print()
+            print('Sleeping 180...')
+            time.sleep(180)
+    raise NotImplementedError()
+
+
 def fetch_logs_and_publish_forever():
     already_published = set()
 
@@ -189,7 +208,7 @@ def fetch_logs_and_publish_forever():
         with suppress(FileNotFoundError):
             os.unlink(CACHE_FILENAME)
 
-        data = set(fetch_logs())
+        data = set(fetch_logs_with_retry())
         not_published_yet = (data - already_published)
         print('data:', len(data), 'new:', not_published_yet)
         already_published = data
