@@ -18,6 +18,41 @@ KLANT_GECRYPT = md5(KLANT_CODE.encode('ascii')).hexdigest()
 SLACK_WEBHOOK_URL = os.environ['SLACK_WEBHOOK_URL']
 CACHE_FILENAME = (__file__.rsplit('.py', 1)[0] + '.cache')
 
+ALERTMOBILE_URL = 'https://alertmobile.alert-group.nl/koi_kb.php'
+MAX_FAIL_TIME = 1800
+SLEEP_AFTER_FETCH = 300
+SLEEP_AFTER_FAIL = 180
+
+
+class AlarmRecord:
+    SORT_KEY = (lambda x: (x.datetime, x.event))
+
+    def __init__(self, datetime, event, group, sector, extra):
+        self.datetime = datetime
+        self.event = event
+        self.group = group
+        self.sector = sector
+        self.extra = extra
+
+    def __hash__(self):
+        return hash((
+            self.datetime, self.event, self.group, self.sector, self.extra))
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
+    @property
+    def datetime_str(self):
+        return self.datetime.strftime('%Y-%m-%d %H:%M:%S')
+
+    def __str__(self):
+        return (
+            '{0.datetime_str}: {0.event} (G{0.group}/S{0.sector}): {0.extra}'
+            .format(self).rstrip())
+
+    def __repr__(self):
+        return '{0.event}@{0.datetime_str}'.format(self)
+
 
 def send_slack_message(message):
     ret = requests.post(
@@ -29,19 +64,16 @@ def send_slack_message(message):
 def login_and_fetch(klant_nummer, klant_gecrypt):
     # Session keeps cookies around.
     with requests.Session() as session:
-        ret = session.get('https://alertmobile.alert-group.nl/koi_kb.php')
+        ret = session.get(ALERTMOBILE_URL)
         assert ret.status_code == 200, (ret, ret.text)
 
-        ret = session.post(
-            'https://alertmobile.alert-group.nl/koi_kb.php', data={
+        ret = session.post(ALERTMOBILE_URL, data={
                 'klantnr': klant_nummer, 'klantcode': '',
                 'gecrypt': klant_gecrypt})
         assert ret.status_code == 200, (ret, ret.text)
 
         for attempt in range(10):
-            ret = session.get(
-                'https://alertmobile.alert-group.nl/koi_kb.php'
-                '?mscherm=status&div=historie')
+            ret = session.get(f'{ALERTMOBILE_URL}?mscherm=status&div=historie')
             assert ret.status_code == 200, (ret, ret.text)
 
             if 'Recent ontvangen meldingen:' in ret.text:
@@ -145,18 +177,16 @@ def filter_only_on_off(data):
     return [i for i in data if i['Alrm'] in ('IN', 'UIT')]
 
 
-def to_strings(data):
+def to_records(data):
     new_data = []
     assert all(i['Aansluiting'] == data[0]['Aansluiting'] for i in data), data
     for row in data:
         event = {'IN': 'ALARM_ON', 'UIT': 'ALARM_OFF'}.get(
             row['Alrm'], row['Alrm'])
-        group = row['Groep']
-        sector = row['Sector']
-        datetime = row['Tijd'].strftime('%Y-%m-%d %H:%M:%S')
         extra = row['Info'] if 'Info' in row else ''
-        new_data.append(
-            f'{datetime}: {event} (G{group}/S{sector}): {extra}'.rstrip())
+        new_data.append(AlarmRecord(
+            datetime=row['Tijd'], event=event, group=row['Groep'],
+            sector=row['Sector'], extra=extra))
     return new_data
 
 
@@ -177,27 +207,24 @@ def fetch_logs():
     data = html_table_to_dicts(data)
     data = fix_dicts_datetime(data)
     data = fix_dicts_who_did_what(data)
-    #data = filter_only_on_off(data)
-    data = to_strings(data)
-    #os.unlink(CACHE_FILENAME)
+    data = to_records(data)
+    # data = [i for i in data if i.event in ('ALARM_ON', 'ALARM_OFF')]
+    # os.unlink(CACHE_FILENAME)
     return data
 
 
 def fetch_logs_with_retry():
-    max_try_time = 1800  # 30 mins
     t0 = time.time()
-
     while True:
         try:
             return fetch_logs()
         except Exception:
-            td = time() - t0
-            if td >= max_try_time:
+            td = time.time() - t0
+            if td >= MAX_FAIL_TIME:
                 raise
             print_exc()
-            print()
-            print('Sleeping 180...')
-            time.sleep(180)
+            print(f'# retrying after {SLEEP_AFTER_FAIL}')
+            time.sleep(SLEEP_AFTER_FAIL)
     raise NotImplementedError()
 
 
@@ -214,18 +241,28 @@ def fetch_logs_and_publish_forever():
         already_published = data
 
         a_while_ago = (datetime.datetime.now() - datetime.timedelta(hours=4))
-        for row in sorted(not_published_yet):
-            if row < a_while_ago.strftime('%Y-%m-%d %H:%M:%S'):
-                print('skipping old:', row)
+        for record in sorted(not_published_yet, key=AlarmRecord.SORT_KEY):
+            if record.datetime < a_while_ago:
+                print(f'skipping old: {record}')
             else:
-                send_slack_message(row)
-                print('sent message:', row)
+                send_slack_message(str(record))
+                print(f'sent message: {record}')
 
         time.sleep(300)
 
 
 if sys.argv[1:2] == ['publish']:
+    print('# alert_group_nl_log2slack')
+    for varname in (
+            'ALERTMOBILE_URL MAX_FAIL_TIME '
+            'SLEEP_AFTER_FETCH SLEEP_AFTER_FAIL'.split()):
+        value = globals()[varname]
+        print(f'# - {varname} = {value}')
     fetch_logs_and_publish_forever()
 else:
-    for row in sorted(fetch_logs()):
-        print(row)
+    test_dupes = set()
+    for record in sorted(fetch_logs(), key=AlarmRecord.SORT_KEY):
+        print(record, '<--', repr(record))
+        test_dupes.add(record)
+    for record in sorted(fetch_logs(), key=AlarmRecord.SORT_KEY):
+        assert record in test_dupes, (record, test_dupes)
