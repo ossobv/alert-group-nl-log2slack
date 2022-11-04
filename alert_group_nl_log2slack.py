@@ -4,6 +4,7 @@ import json
 import os
 import time
 import sys
+from collections import namedtuple
 from contextlib import suppress
 from hashlib import md5
 from traceback import print_exc
@@ -24,22 +25,9 @@ SLEEP_AFTER_FETCH = 300
 SLEEP_AFTER_FAIL = 180
 
 
-class AlarmRecord:
+class AlarmRecord(
+        namedtuple('AlarmRecord', 'datetime event group sector extra')):
     SORT_KEY = (lambda x: (x.datetime, x.event))
-
-    def __init__(self, datetime, event, group, sector, extra):
-        self.datetime = datetime
-        self.event = event
-        self.group = group
-        self.sector = sector
-        self.extra = extra
-
-    def __hash__(self):
-        return hash((
-            self.datetime, self.event, self.group, self.sector, self.extra))
-
-    def __eq__(self, other):
-        return hash(self) == hash(other)
 
     @property
     def datetime_str(self):
@@ -51,7 +39,7 @@ class AlarmRecord:
             .format(self).rstrip())
 
     def __repr__(self):
-        return '{0.event}@{0.datetime_str}'.format(self)
+        return repr(str(self))
 
 
 def send_slack_message(message):
@@ -260,9 +248,10 @@ if sys.argv[1:2] == ['publish']:
         print(f'# - {varname} = {value}')
     fetch_logs_and_publish_forever()
 else:
-    test_dupes = set()
+    already_published = set()
     for record in sorted(fetch_logs(), key=AlarmRecord.SORT_KEY):
-        print(record, '<--', repr(record))
-        test_dupes.add(record)
+        print(record)
+        already_published.add(record)
+
     for record in sorted(fetch_logs(), key=AlarmRecord.SORT_KEY):
-        assert record in test_dupes, (record, test_dupes)
+        assert record in already_published, (record, already_published)
