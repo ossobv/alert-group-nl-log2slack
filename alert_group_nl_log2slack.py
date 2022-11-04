@@ -239,19 +239,20 @@ def fetch_logs_and_publish_forever():
         time.sleep(300)
 
 
-if sys.argv[1:2] == ['publish']:
-    print('# alert_group_nl_log2slack')
-    for varname in (
-            'ALERTMOBILE_URL MAX_FAIL_TIME '
-            'SLEEP_AFTER_FETCH SLEEP_AFTER_FAIL'.split()):
-        value = globals()[varname]
-        print(f'# - {varname} = {value}')
-    fetch_logs_and_publish_forever()
-else:
-    already_published = set()
-    for record in sorted(fetch_logs(), key=AlarmRecord.SORT_KEY):
-        print(record)
-        already_published.add(record)
+if __name__ == '__main__':
+    if sys.argv[1:2] == ['publish']:
+        print('# alert_group_nl_log2slack')
+        for varname in (
+                'ALERTMOBILE_URL MAX_FAIL_TIME '
+                'SLEEP_AFTER_FETCH SLEEP_AFTER_FAIL'.split()):
+            value = globals()[varname]
+            print(f'# - {varname} = {value}')
+        fetch_logs_and_publish_forever()
+    else:
+        already_published = set()
+        for record in sorted(fetch_logs(), key=AlarmRecord.SORT_KEY):
+            print(record)
+            already_published.add(record)
 
-    for record in sorted(fetch_logs(), key=AlarmRecord.SORT_KEY):
-        assert record in already_published, (record, already_published)
+        for record in sorted(fetch_logs(), key=AlarmRecord.SORT_KEY):
+            assert record in already_published, (record, already_published)
