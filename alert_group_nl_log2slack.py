@@ -72,13 +72,12 @@ def decode_cookie(val):
 
 
 def dump_cookies(session, where):
-    print(f'cookies (at {where}):')
     # oa-koi-kb, has what looks to be a php-serialized value like:
     # '''O:13:"koi_kb_config":26:{s:6:"access";i:3;s:8:"sessienr";s:11:...'''
     # (base64 + '=' escaped as '%3D')
     for key, value in session.cookies.items():
         type_, decoded = decode_cookie(value)
-        print(f'- {key} ({type_}) = {decoded}')
+        print(f'cookies @ {where}: {key} ({type_}) = {decoded}')
 
 
 def login_and_fetch(klant_nummer, klant_gecrypt):
