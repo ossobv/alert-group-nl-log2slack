@@ -8,4 +8,6 @@ RUN pip install BeautifulSoup4 requests
 COPY alert_group_nl_log2slack.py /srv/
 CMD python3 -V && pip freeze && echo '.' && \
     echo 'Starting publish-forever...' && \
+    ln -sf /usr/share/zoneinfo/${TIMEZONE:-Etc/UTC} /etc/localtime && \
+    test -s /etc/localtime && \
     exec python3 /srv/alert_group_nl_log2slack.py publish

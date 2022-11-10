@@ -9,3 +9,4 @@ Requirements::
     KLANT_NUMMER = E...
     KLANT_CODE = <pass>
     SLACK_WEBHOOK_URL = https://hooks.slack.com/services/T../B../a..
+    TIMEZONE = Europe/Amsterdam  # used by Docker image
