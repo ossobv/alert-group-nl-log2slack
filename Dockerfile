@@ -4,7 +4,7 @@ LABEL description="Scrape alertmobile.alert-group.nl and publish to Slack"
 LABEL dockerfile-vcs="https://github.com/ossobv/alert-group-nl-log2slack"
 
 ENV PYTHONUNBUFFERED=1
-RUN pip install BeautifulSoup4 requests
+RUN pip install BeautifulSoup4 requests phpserialize
 COPY alert_group_nl_log2slack.py /srv/
 CMD python3 -V && pip freeze && echo '.' && \
     echo 'Starting publish-forever...' && \

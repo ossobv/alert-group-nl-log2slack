@@ -11,6 +11,7 @@ from hashlib import md5
 from traceback import print_exc
 
 from bs4 import BeautifulSoup
+import phpserialize
 import requests
 
 
@@ -50,25 +51,45 @@ def send_slack_message(message):
     assert ret.status_code == 200, (ret, ret.text)
 
 
+def from_utf8(data):
+    if isinstance(data, bytes):
+        return data.decode('utf-8')
+    if isinstance(data, list):
+        return [from_utf8(i) for i in data]
+    if isinstance(data, dict):
+        return dict((from_utf8(k), from_utf8(v)) for k, v in data.items())
+    return data
+
+
 def decode_cookie(val):
+    decoding = []
+
     try:
-        base64_decoded = b64decode(val)
-        type_ = 'base64'
+        val = b64decode(val)
+        decoding.append('b64')
     except ValueError:
         try:
-            base64_decoded = b64decode(val.replace('%3D', '='))
-            type_ = 'base64pct'
+            val = b64decode(val.replace('%3D', '='))
+            decoding.append('b64pct')
         except ValueError:
-            return 'raw', value
+            pass
 
     try:
-        base64_decoded = base64_decoded.decode('utf-8')
-    except UnicodeDecodeError:
-        pass
-    else:
-        type_ = f'{type_};utf-8'
+        val = json.dumps(
+            from_utf8(phpserialize.loads(
+                val, object_hook=(lambda k, v: {k: dict(v)}))),
+            separators=(', ', ':'))  # semi-compact
+        decoding.append('phpserialize')
+    except Exception:
+        try:
+            val = val.decode('utf-8')
+            decoding.append('utf8')
+        except UnicodeDecodeError:
+            pass
 
-    return type_, base64_decoded
+    if not decoding:
+        decoding = ['raw']
+    return ';'.join(decoding), val
 
 
 def dump_cookies(session, where):
