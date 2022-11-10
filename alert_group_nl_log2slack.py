@@ -200,6 +200,8 @@ def fetch_logs():
 def fetch_logs_with_retry():
     t0 = time.time()
     while True:
+        with suppress(FileNotFoundError):
+            os.unlink(CACHE_FILENAME)
         try:
             return fetch_logs()
         except Exception:
@@ -216,9 +218,6 @@ def fetch_logs_and_publish_forever():
     already_published = set()
 
     while True:
-        with suppress(FileNotFoundError):
-            os.unlink(CACHE_FILENAME)
-
         data = set(fetch_logs_with_retry())
         not_published_yet = (data - already_published)
         print(f'data count: {len(data)}, new: {not_published_yet}')
