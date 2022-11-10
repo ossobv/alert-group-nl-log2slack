@@ -4,6 +4,7 @@ import json
 import os
 import time
 import sys
+from base64 import b64decode
 from collections import namedtuple
 from contextlib import suppress
 from hashlib import md5
@@ -49,19 +50,53 @@ def send_slack_message(message):
     assert ret.status_code == 200, (ret, ret.text)
 
 
+def decode_cookie(val):
+    try:
+        base64_decoded = b64decode(val)
+        type_ = 'base64'
+    except ValueError:
+        try:
+            base64_decoded = b64decode(val.replace('%3D', '='))
+            type_ = 'base64pct'
+        except ValueError:
+            return 'raw', value
+
+    try:
+        base64_decoded = base64_decoded.decode('utf-8')
+    except UnicodeDecodeError:
+        pass
+    else:
+        type_ = f'{type_};utf-8'
+
+    return type_, base64_decoded
+
+
+def dump_cookies(session, where):
+    print(f'cookies (at {where}):')
+    # oa-koi-kb, has what looks to be a php-serialized value like:
+    # '''O:13:"koi_kb_config":26:{s:6:"access";i:3;s:8:"sessienr";s:11:...'''
+    # (base64 + '=' escaped as '%3D')
+    for key, value in session.cookies.items():
+        type_, decoded = decode_cookie(value)
+        print(f'- {key} ({type_}) = {decoded}')
+
+
 def login_and_fetch(klant_nummer, klant_gecrypt):
     # Session keeps cookies around.
     with requests.Session() as session:
         ret = session.get(ALERTMOBILE_URL)
+        dump_cookies(session, 'first get')
         assert ret.status_code == 200, (ret, ret.text)
 
         ret = session.post(ALERTMOBILE_URL, data={
                 'klantnr': klant_nummer, 'klantcode': '',
                 'gecrypt': klant_gecrypt})
+        dump_cookies(session, 'login post')
         assert ret.status_code == 200, (ret, ret.text)
 
         for attempt in range(10):
             ret = session.get(f'{ALERTMOBILE_URL}?mscherm=status&div=historie')
+            dump_cookies(session, 'status get')
             assert ret.status_code == 200, (ret, ret.text)
 
             if 'Recent ontvangen meldingen:' in ret.text:
