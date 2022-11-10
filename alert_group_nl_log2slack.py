@@ -178,11 +178,15 @@ def fetch(klant_nummer, klant_gecrypt):
     try:
         with open(CACHE_FILENAME) as fp:
             data = fp.read()
-        assert 'Recent ontvangen meldingen:' in data
     except Exception:
+        # Leave exception handler so we won't see this as cause later on.
+        data = ''
+
+    if 'Recent ontvangen meldingen:' not in data:
         data = login_and_fetch(klant_nummer, klant_gecrypt)
         with open(CACHE_FILENAME, 'w') as fp:
             fp.write(data)
+
     return data
 
 
