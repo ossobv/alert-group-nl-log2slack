@@ -79,7 +79,7 @@ def decode_cookie(val):
             from_utf8(phpserialize.loads(
                 val, object_hook=(lambda k, v: {k: dict(v)}))),
             separators=(', ', ':'))  # semi-compact
-        decoding.append('phpserialize')
+        decoding.append('phpser')
     except Exception:
         try:
             val = val.decode('utf-8')
