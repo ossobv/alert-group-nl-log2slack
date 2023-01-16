@@ -30,15 +30,19 @@ SLEEP_AFTER_FAIL = 180
 class AlarmRecord(
         namedtuple('AlarmRecord', 'datetime event group sector extra')):
     SORT_KEY = (lambda x: (x.datetime, x.event))
+    NORMAL_EVENTS = ('ALARM_ON', 'ALARM_OFF', '24H')
 
     @property
     def datetime_str(self):
         return self.datetime.strftime('%Y-%m-%d %H:%M:%S')
 
     def __str__(self):
-        return (
+        ret = (
             '{0.datetime_str}: {0.event} (G{0.group}/S{0.sector}): {0.extra}'
             .format(self).rstrip())
+        if self.event not in self.NORMAL_EVENTS:
+            ret += ' <-- @channel'  # slack notification
+        return ret
 
     def __repr__(self):
         return repr(str(self))
@@ -220,7 +224,16 @@ def to_records(data):
     new_data = []
     assert all(i['Aansluiting'] == data[0]['Aansluiting'] for i in data), data
     for row in data:
-        event = {'IN': 'ALARM_ON', 'UIT': 'ALARM_OFF'}.get(
+        event = {
+                'IN': 'ALARM_ON',
+                'UIT': 'ALARM_OFF',
+                '24H': '24H',                       # ?, always "AUTOTEST"
+                # The following concern the known times in which the
+                # alarm may be switched on/off.
+                'TVU': 'UNEXPECT_ALARM_OFF',        # "Te Vroeg Uitgeschakeld"
+                'TLI': 'UNEXPECT_NO_ALARM_YET',     # "Te Laat Ingeschakeld"
+                'AFW': 'OVERRIDE_ALARM_TIME',       # Afwijkende tijd(?)
+            }.get(
             row['Alrm'], row['Alrm'])
         extra = row['Info'] if 'Info' in row else ''
         new_data.append(AlarmRecord(
