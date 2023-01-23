@@ -41,7 +41,7 @@ class AlarmRecord(
             '{0.datetime_str}: {0.event} (G{0.group}/S{0.sector}): {0.extra}'
             .format(self).rstrip())
         if self.event not in self.NORMAL_EVENTS:
-            ret += ' <-- @channel'  # slack notification
+            ret += ' <-- <!channel>'  # slack notification
         return ret
 
     def __repr__(self):
