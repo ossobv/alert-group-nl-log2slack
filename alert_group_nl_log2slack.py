@@ -15,10 +15,10 @@ import phpserialize
 import requests
 
 
-KLANT_NUMMER = os.environ['KLANT_NUMMER']
-KLANT_CODE = os.environ['KLANT_CODE']
+KLANT_NUMMER = os.environ.get('KLANT_NUMMER')
+KLANT_CODE = os.environ.get('KLANT_CODE', '')
 KLANT_GECRYPT = md5(KLANT_CODE.encode('ascii')).hexdigest()
-SLACK_WEBHOOK_URL = os.environ['SLACK_WEBHOOK_URL']
+SLACK_WEBHOOK_URL = os.environ.get('SLACK_WEBHOOK_URL')
 CACHE_FILENAME = (__file__.rsplit('.py', 1)[0] + '.cache')
 
 ALERTMOBILE_URL = 'https://alertmobile.alert-group.nl/koi_kb.php'
@@ -306,6 +306,232 @@ def fetch_logs_and_publish_forever():
         time.sleep(300)
 
 
+def test():
+    """
+    Hide the tests inside this function. Only load/parse this when called.
+    """
+    import unittest
+
+    class AllTests(unittest.TestCase):
+        maxDiff = None
+
+        def test_html_table_to_dicts(self):
+            with open('test_status.html') as fp:
+                data = fp.read()
+            data = html_table_to_dicts(data)
+            expected_data = [
+               {'Aansluiting': '',
+                'Alrm': '',
+                'Groep': '',
+                'Omschrijving': '',
+                'Sector': '---',
+                'Tijd': '03/02/23'},
+               {'Aansluiting': 'E0123456',
+                'Alrm': 'INF',
+                'Groep': '',
+                'Omschrijving': 'AUTOTEST',
+                'Sector': '0',
+                'Tijd': '10:12:05'},
+               {'Aansluiting': 'E0123456',
+                'Alrm': '24H',
+                'Groep': '',
+                'Omschrijving': 'Test',
+                'Sector': '0',
+                'Tijd': '10:12:05'},
+               {'Aansluiting': 'E0123456',
+                'Alrm': 'UIT',
+                'Groep': '6',
+                'Omschrijving': 'Uit',
+                'Sector': '0',
+                'Tijd': '08:37:20'},
+               {'Aansluiting': 'E0123456',
+                'Alrm': 'INF',
+                'Groep': '6',
+                'Omschrijving': 'UITGESCH. CHARLIE',
+                'Sector': '0',
+                'Tijd': '08:37:20'},
+               {'Aansluiting': '',
+                'Alrm': '',
+                'Groep': '',
+                'Omschrijving': '',
+                'Sector': '---',
+                'Tijd': '02/02/23'},
+               {'Aansluiting': 'E0123456',
+                'Alrm': 'INF',
+                'Groep': '5',
+                'Omschrijving': 'VOLL. ING BOB',
+                'Sector': '0',
+                'Tijd': '19:09:48'},
+               {'Aansluiting': 'E0123456',
+                'Alrm': 'IN',
+                'Groep': '5',
+                'Omschrijving': 'In',
+                'Sector': '0',
+                'Tijd': '19:09:48'},
+               {'Aansluiting': 'E0123456',
+                'Alrm': 'INF',
+                'Groep': '',
+                'Omschrijving': 'AUTOTEST',
+                'Sector': '0',
+                'Tijd': '10:12:05'},
+               {'Aansluiting': 'E0123456',
+                'Alrm': '24H',
+                'Groep': '',
+                'Omschrijving': 'Test',
+                'Sector': '0',
+                'Tijd': '10:12:05'},
+               {'Aansluiting': 'E0123456',
+                'Alrm': 'INF',
+                'Groep': '1',
+                'Omschrijving': 'UITGESCH. ALICE',
+                'Sector': '0',
+                'Tijd': '08:37:11'},
+               {'Aansluiting': 'E0123456',
+                'Alrm': 'UIT',
+                'Groep': '1',
+                'Omschrijving': 'Uit',
+                'Sector': '0',
+                'Tijd': '08:37:11'},
+            ]
+            self.assertEqual(expected_data, data)
+
+            data = fix_dicts_datetime(data)
+            expected_data = [
+                {'Aansluiting': 'E0123456',
+                 'Alrm': 'INF',
+                 'Groep': '',
+                 'Omschrijving': 'AUTOTEST',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2023, 2, 3, 10, 12, 5)},
+                {'Aansluiting': 'E0123456',
+                 'Alrm': '24H',
+                 'Groep': '',
+                 'Omschrijving': 'Test',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2023, 2, 3, 10, 12, 5)},
+                {'Aansluiting': 'E0123456',
+                 'Alrm': 'UIT',
+                 'Groep': '6',
+                 'Omschrijving': 'Uit',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2023, 2, 3, 8, 37, 20)},
+                {'Aansluiting': 'E0123456',
+                 'Alrm': 'INF',
+                 'Groep': '6',
+                 'Omschrijving': 'UITGESCH. CHARLIE',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2023, 2, 3, 8, 37, 20)},
+                {'Aansluiting': 'E0123456',
+                 'Alrm': 'INF',
+                 'Groep': '5',
+                 'Omschrijving': 'VOLL. ING BOB',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2023, 2, 2, 19, 9, 48)},
+                {'Aansluiting': 'E0123456',
+                 'Alrm': 'IN',
+                 'Groep': '5',
+                 'Omschrijving': 'In',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2023, 2, 2, 19, 9, 48)},
+                {'Aansluiting': 'E0123456',
+                 'Alrm': 'INF',
+                 'Groep': '',
+                 'Omschrijving': 'AUTOTEST',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2023, 2, 2, 10, 12, 5)},
+                {'Aansluiting': 'E0123456',
+                 'Alrm': '24H',
+                 'Groep': '',
+                 'Omschrijving': 'Test',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2023, 2, 2, 10, 12, 5)},
+                {'Aansluiting': 'E0123456',
+                 'Alrm': 'INF',
+                 'Groep': '1',
+                 'Omschrijving': 'UITGESCH. ALICE',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2023, 2, 2, 8, 37, 11)},
+                {'Aansluiting': 'E0123456',
+                 'Alrm': 'UIT',
+                 'Groep': '1',
+                 'Omschrijving': 'Uit',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2023, 2, 2, 8, 37, 11)},
+            ]
+            self.assertEqual(expected_data, data)
+
+            data = fix_dicts_who_did_what(data)
+            expected_data = [
+                {'Aansluiting': 'E0123456',
+                 'Alrm': '24H',
+                 'Groep': '',
+                 'Info': 'AUTOTEST',
+                 'Omschrijving': 'Test',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2023, 2, 3, 10, 12, 5)},
+                {'Aansluiting': 'E0123456',
+                 'Alrm': 'UIT',
+                 'Groep': '6',
+                 'Info': 'UITGESCH. CHARLIE',
+                 'Omschrijving': 'Uit',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2023, 2, 3, 8, 37, 20)},
+                {'Aansluiting': 'E0123456',
+                 'Alrm': 'IN',
+                 'Groep': '5',
+                 'Info': 'VOLL. ING BOB',
+                 'Omschrijving': 'In',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2023, 2, 2, 19, 9, 48)},
+                {'Aansluiting': 'E0123456',
+                 'Alrm': '24H',
+                 'Groep': '',
+                 'Info': 'AUTOTEST',
+                 'Omschrijving': 'Test',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2023, 2, 2, 10, 12, 5)},
+                {'Aansluiting': 'E0123456',
+                 'Alrm': 'UIT',
+                 'Groep': '1',
+                 'Info': 'UITGESCH. ALICE',
+                 'Omschrijving': 'Uit',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2023, 2, 2, 8, 37, 11)},
+            ]
+            self.assertEqual(expected_data, data)
+
+            data = to_records(data)
+            expected_data = [
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 2, 3, 10, 12, 5),
+                    event='24H', group='', sector='0', extra='AUTOTEST'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 2, 3, 8, 37, 20),
+                    event='ALARM_OFF', group='6', sector='0',
+                    extra='UITGESCH. CHARLIE'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 2, 2, 19, 9, 48),
+                    event='ALARM_ON', group='5', sector='0',
+                    extra='VOLL. ING BOB'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 2, 2, 10, 12, 5),
+                    event='24H', group='', sector='0', extra='AUTOTEST'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 2, 2, 8, 37, 11),
+                    event='ALARM_OFF', group='1', sector='0',
+                    extra='UITGESCH. ALICE'),
+            ]
+            self.assertEqual(expected_data, data)
+
+            # data = [i for i in data if i.event in ('ALARM_ON', 'ALARM_OFF')]
+            # os.unlink(CACHE_FILENAME)
+            return data
+
+    # Returns a test suite with a single test class. This is then run by
+    # unittest.main().
+    return unittest.defaultTestLoader.loadTestsFromTestCase(AllTests)
+
+
 if __name__ == '__main__':
     if sys.argv[1:2] == ['publish']:
         print('# alert_group_nl_log2slack')
@@ -315,6 +541,11 @@ if __name__ == '__main__':
             value = globals()[varname]
             print(f'# - {varname} = {value}')
         fetch_logs_and_publish_forever()
+    elif sys.argv[1:2] == ['test']:
+        from unittest import main
+        os.environ['KLANT_NUMMER'] = 'E123456'  # yes, without 0
+        os.environ['KLANT_CODE'] = '<supersecretpasswordhere>'
+        main()
     else:
         already_published = set()
         for record in sorted(fetch_logs(), key=AlarmRecord.SORT_KEY):

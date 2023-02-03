@@ -1,0 +1,269 @@
+
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=0">
+		<link type="text/css" href="css/global.css" rel="stylesheet">
+		<script type="text/javascript" src="javascript/jquery.js"></script>
+		<title>Alert - Klant Beheer Pagina</title>
+		<meta http-equiv="refresh" content="-1;url=koi_kb.php"/>
+	</head>
+	<body>
+			<div id="banner">
+    <div class="logo"><img src="img/alert-logo.svg" alt="Alert logo"></div>
+    <picture>
+        <source media="(min-width: 800px)" srcset="img/gebruikersportal-alert-alarmcentrale-1000x200.jpg 1x, img/gebruikersportal-alert-alarmcentrale-2000x400.jpg 2x" />
+        <source media="(min-width: 600px)" srcset="img/gebruikersportal-alert-alarmcentrale-800x200.jpg 1x, img/gebruikersportal-alert-alarmcentrale-1600x400.jpg 2x" />
+        <source media="(min-width: 450px)" srcset="img/gebruikersportal-alert-alarmcentrale-600x200.jpg 1x, img/gebruikersportal-alert-alarmcentrale-1200x400.jpg 2x" />
+        <source media="(min-width: 401px)" srcset="img/gebruikersportal-alert-alarmcentrale-450x200.jpg 1x, img/gebruikersportal-alert-alarmcentrale-900x400.jpg 2x" />
+        <source media="(max-width: 400px)" srcset="img/gebruikersportal-alert-alarmcentrale-400x220.jpg 1x, img/gebruikersportal-alert-alarmcentrale-800x440.jpg 2x" />
+        <img src="img/gebruikersportal-alert-alarmcentrale-1000x200.jpg" alt="">
+    </picture>
+    <p class="content"><em>Voorbereid</em> op uw veiligheid</p>
+</div>
+		<div id="primary-section">
+			<div id="sidebar">
+				<nav id="menu-main" class="inner-box">
+    <button class="trigger-menu-main" type="button">Menu</button>
+    <ul class="nav">
+        <li class="primary-level"><a href="View_voorpagina.html">Home</a></li>
+                    <li class="primary-level"><a href="koi.php?mscherm=start">Klant pagina</a></li>
+                            
+            <li class="primary-level">
+                <a href="koi_kb.php?mscherm=start">Beheer</a>
+                <ul class="secondary-level">
+                                            <li><a href="koi_kb.php?mscherm=gebruikers_overzicht">Gebruikers</a></li>
+                                            <li><a href="koi_kb.php?mscherm=status">Status</a></li>
+                                            <li><a href="koi_kb.php?mscherm=schakeltijden">Schakeltijden</a></li>
+                                            <li><a href="koi_kb.php?mscherm=klient_overzicht">Klienten</a></li>
+                                            <li><a href="koi_kb.php?mscherm=aansluit_overzicht">Aansluitingen</a></li>
+                                            <li><a href="koi_kb.php?mscherm=logoff">Afmelden</a></li>
+                    
+                </ul>
+            </li>
+                        <li class="primary-level"><a href="Informatie.html">Info Alert Mobile</a></li>
+    </ul>
+</nav>
+<script type="text/javascript">
+    $('.trigger-menu-main').click(function () {
+        $('#menu-main').toggleClass('state-open');
+    });
+</script>
+			</div>
+			<div id="main-content">
+				<div class="inner-box">
+						<div id="header">
+								<div class="row">
+			<div class="col state-small">Klient</div>
+			<div class="col state-small">E0123456</div>
+			<div class="col state-medium">Acme Inc</div>
+			<div class="col address">1636 Coyote Ave</div>
+			<div class="col address">Yosemite</div>
+		</div>
+							</div>
+
+						<script type="text/javascript" src="javascript/md5.js"> </script>
+	
+	<script type="text/javascript"> 
+	function in_test()
+	{
+	window.location=window.location.protocol + "koi_kb.php?mscherm=intestzetten&sector=0";
+	}
+	function uit_test()
+	{
+	window.location=window.location.protocol + "koi_kb.php?mscherm=uittesthalen&sector=0";
+	}
+	</script>
+	 <script type="text/javascript" src="javascript/koi_mk_status.js"></script>
+	
+	<div style="display: none">
+		<p id="klantnr">E0123456</p>
+		<p id="aansluit_nr"></p>
+        <p id="base">koi_kb.php</p>
+        <p id="rapp_lst_mut"></p>
+        <p id="status_refresh">30</p>
+        <p id="status_interval">30</p>
+	</div>
+
+    
+    <div class="heading-box">
+        <h1 class="block-title">Openstaande alarmen</h1>
+        <div class="btn-cont state-reversed">
+            
+            <button class="btn state-small" id="auto">Auto</button>
+            <button class="btn state-small" id="refresh">Refresh</button>
+        </div>
+    </div>
+	<div id="status">
+	
+		
+						        <p class="notice-box">Geen alarmen gevonden.</p>
+		
+		
+	<div id="sectoren">
+		    </div> <!-- sectoren -->
+	</div><!-- status -->
+	<div id="historie_smal">
+    <h2 class="block-title">Recent ontvangen meldingen:</h2>
+	        <div class="responsive-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th title="Tijdstip waarop de melding ontvangen is">Tijd</th>
+                        <th>Sector</th>
+                        <th>Groep</th>
+                                                <th>Aansluiting</th>
+                                                <th title="Alarm code van de Meldkamer">Alrm</th>
+                                                
+                        
+                        
+                                                <th>Omschrijving</th>
+                                            </tr>
+                </thead>
+                <tbody>
+                                                                        <tr class="no-link">
+                                <td id="datum">03/02/23</td>
+                                <td id="datum">---</td>
+                                <td></td>
+                                <td></td>
+                                                                <td></td>
+                                                                <td></td>
+                                                                
+                                
+                                
+                                                                                            </tr>
+                                                <tr>
+                            <td>10:12:05</td>
+                            <td>0</td>
+                            <td></td>
+                                                        <td><a href="koi_kb.php?mscherm=status&aansluit_nr=E0123456">E0123456</a></td>
+                                                        <td>INF</td>
+                                                        
+                            
+                            
+                                                        <td> AUTOTEST</td>
+                                                    </tr>
+                                                                    <tr>
+                            <td>10:12:05</td>
+                            <td>0</td>
+                            <td></td>
+                                                        <td><a href="koi_kb.php?mscherm=status&aansluit_nr=E0123456">E0123456</a></td>
+                                                        <td>24H</td>
+                                                        
+                            
+                            
+                                                        <td> Test</td>
+                                                    </tr>
+                                                                    <tr>
+                            <td>08:37:20</td>
+                            <td>0</td>
+                            <td>6</td>
+                                                        <td><a href="koi_kb.php?mscherm=status&aansluit_nr=E0123456">E0123456</a></td>
+                                                        <td>UIT</td>
+                                                        
+                            
+                            
+                                                        <td> Uit</td>
+                                                    </tr>
+                                                                    <tr>
+                            <td>08:37:20</td>
+                            <td>0</td>
+                            <td>6</td>
+                                                        <td><a href="koi_kb.php?mscherm=status&aansluit_nr=E0123456">E0123456</a></td>
+                                                        <td>INF</td>
+                                                        
+                            
+                            
+                                                        <td> UITGESCH. CHARLIE</td>
+                                                    </tr>
+                                                                        <tr class="no-link">
+                                <td id="datum">02/02/23</td>
+                                <td id="datum">---</td>
+                                <td></td>
+                                <td></td>
+                                                                <td></td>
+                                                                <td></td>
+                                                                
+                                
+                                
+                                                                                            </tr>
+                                                <tr>
+                            <td>19:09:48</td>
+                            <td>0</td>
+                            <td>5</td>
+                                                        <td><a href="koi_kb.php?mscherm=status&aansluit_nr=E0123456">E0123456</a></td>
+                                                        <td>INF</td>
+                                                        
+                            
+                            
+                                                        <td> VOLL. ING BOB</td>
+                                                    </tr>
+                                                                    <tr>
+                            <td>19:09:48</td>
+                            <td>0</td>
+                            <td>5</td>
+                                                        <td><a href="koi_kb.php?mscherm=status&aansluit_nr=E0123456">E0123456</a></td>
+                                                        <td>IN</td>
+                                                        
+                            
+                            
+                                                        <td> In</td>
+                                                    </tr>
+                                                                    <tr>
+                            <td>10:12:05</td>
+                            <td>0</td>
+                            <td></td>
+                                                        <td><a href="koi_kb.php?mscherm=status&aansluit_nr=E0123456">E0123456</a></td>
+                                                        <td>INF</td>
+                                                        
+                            
+                            
+                                                        <td> AUTOTEST</td>
+                                                    </tr>
+                                                                    <tr>
+                            <td>10:12:05</td>
+                            <td>0</td>
+                            <td></td>
+                                                        <td><a href="koi_kb.php?mscherm=status&aansluit_nr=E0123456">E0123456</a></td>
+                                                        <td>24H</td>
+                                                        
+                            
+                            
+                                                        <td> Test</td>
+                                                    </tr>
+                                                                    <tr>
+                            <td>08:37:11</td>
+                            <td>0</td>
+                            <td>1</td>
+                                                        <td><a href="koi_kb.php?mscherm=status&aansluit_nr=E0123456">E0123456</a></td>
+                                                        <td>INF</td>
+                                                        
+                            
+                            
+                                                        <td> UITGESCH. ALICE</td>
+                                                    </tr>
+                                                                    <tr>
+                            <td>08:37:11</td>
+                            <td>0</td>
+                            <td>1</td>
+                                                        <td><a href="koi_kb.php?mscherm=status&aansluit_nr=E0123456">E0123456</a></td>
+                                                        <td>UIT</td>
+                                                        
+                            
+                            
+                                                        <td> Uit</td>
+                                                    </tr>
+                    
+                </tbody>
+            </table>
+        </div>
+    	</div> <!-- historie -->
+
+				</div>
+			</div>
+			<hr class="clear">
+		</div>
+		<footer id="bottom">&copy; 2023 <a href="http://www.alert-group.nl/">Alert Alarmcentrale</a></footer>
+		</body>
+</html>
