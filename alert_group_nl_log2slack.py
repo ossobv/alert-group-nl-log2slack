@@ -187,7 +187,7 @@ def fix_dicts_datetime(data):
 
 def fix_dicts_who_did_what(data):
     """
-    The dict has info in a higher up event.
+    The dict has info in a higher up event. Or sometimes lower..
 
     [{'Aansluiting': 'E0123456',
       'Alrm': 'INF',
@@ -204,9 +204,17 @@ def fix_dicts_who_did_what(data):
     """
     new_data = []
     info = None
+    last_row = None
     for row in data:
         if row['Alrm'] == 'INF':
-            info = row
+            if last_row is not None and (
+                    last_row['Aansluiting'] == row['Aansluiting'] and
+                    last_row['Groep'] == row['Groep'] and
+                    last_row['Sector'] == row['Sector'] and
+                    last_row['Tijd'] == row['Tijd']):
+                last_row['Info'] = row['Omschrijving']
+            else:
+                info = row
         elif info is not None:
             assert row['Aansluiting'] == info['Aansluiting'], (row, info)
             assert row['Groep'] == info['Groep'], (row, info)
@@ -215,8 +223,10 @@ def fix_dicts_who_did_what(data):
             row['Info'] = info['Omschrijving']
             info = None
             new_data.append(row)
+            last_row = None
         else:
             new_data.append(row)
+            last_row = row
     return new_data
 
 
