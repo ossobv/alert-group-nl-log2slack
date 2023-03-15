@@ -37,12 +37,31 @@ class AlarmRecord(
         return self.datetime.strftime('%Y-%m-%d %H:%M:%S')
 
     def __str__(self):
-        ret = (
-            '{0.datetime_str}: {0.event} (G{0.group}/S{0.sector}): {0.extra}'
+        message = (
+            '{0.datetime_str}: {0.event} (G{0.group}/S{0.sector})'
             .format(self).rstrip())
-        if self.event not in self.NORMAL_EVENTS:
-            ret += ' <-- <!channel>'  # slack notification
-        return ret
+        info = self.extra
+
+        if (self.event == 'ALARM_ON' and info.startswith('VOLL. ING ') and
+                info.endswith(' (In)')):
+            username = info[10:-5].lower()
+            info = f'by <!{username}>'
+
+        elif (self.event == 'ALARM_OFF' and info.startswith('UITGESCH. ') and
+                info.endswith(' (Uit)')):
+            username = info[10:-6].lower()
+            info = f'by <!{username}>'
+
+        elif self.event == '24H' and info == 'AUTOTEST (Test)':
+            info = '(autotest)'
+
+        elif self.event not in self.NORMAL_EVENTS:
+            info += ' <-- <!channel>'  # slack notification
+
+        if info:
+            message += f': {info}'
+
+        return message
 
     def __repr__(self):
         return repr(str(self))
@@ -648,6 +667,40 @@ def test():
             self.assertEqual(expected_data, data)
 
             return data
+
+        def test_record_alarm_on(self):
+            self.assertEqual(
+                str(AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 14, 8, 27, 42),
+                    event='ALARM_OFF', group='14', sector='0',
+                    extra='UITGESCH. ALICE (Uit)')),
+                '2023-03-14 08:27:42: ALARM_OFF (G14/S0): by <!alice>')
+
+        def test_record_alarm_off(self):
+            self.assertEqual(
+                str(AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 14, 18, 56, 5),
+                    event='ALARM_ON', group='6', sector='0',
+                    extra='VOLL. ING BOB (In)')),
+                '2023-03-14 18:56:05: ALARM_ON (G6/S0): by <!bob>')
+
+        def test_record_autotest(self):
+            self.assertEqual(
+                str(AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 15, 10, 12, 15),
+                    event='24H', group='', sector='0',
+                    extra='AUTOTEST (Test)')),
+                '2023-03-15 10:12:15: 24H (G/S0): (autotest)')
+
+        def test_record_uncommon(self):
+            self.assertEqual(
+                str(AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 15, 12, 14, 20),
+                    event='INB', group='1034', sector='0',
+                    extra='INBRAAK   GBM RAAM KANTOOR (Inbraak)')),
+                ('2023-03-15 12:14:20: INB (G1034/S0): '
+                 'INBRAAK   GBM RAAM KANTOOR (Inbraak) <-- <!channel>'))
+
 
     # Returns a test suite with a single test class. This is then run by
     # unittest.main().
