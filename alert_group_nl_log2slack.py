@@ -245,9 +245,16 @@ def to_records(data):
                 'AFW': 'OVERRIDE_ALARM_TIME',       # Afwijkende tijd(?)
             }.get(
             row['Alrm'], row['Alrm'])
+
         extra = row['Info'] if 'Info' in row else ''
+        if row['Omschrijving']:
+            if extra and extra != ':':
+                extra += f' ({row["Omschrijving"]})'
+            else:
+                extra = row['Omschrijving']
+
         new_data.append(AlarmRecord(
-            datetime=row['Tijd'], event=event, group=row['Groep'],
+            datetime=row['Tijd'], event=(event or '(log)'), group=row['Groep'],
             sector=row['Sector'], extra=extra))
     return new_data
 
@@ -326,7 +333,7 @@ def test():
         maxDiff = None
 
         def test_html_table_to_dicts(self):
-            with open('test_status.html') as fp:
+            with open('test_status_1.html') as fp:
                 data = fp.read()
             data = html_table_to_dicts(data)
             expected_data = [
@@ -514,27 +521,132 @@ def test():
             expected_data = [
                 AlarmRecord(
                     datetime=datetime.datetime(2023, 2, 3, 10, 12, 5),
-                    event='24H', group='', sector='0', extra='AUTOTEST'),
+                    event='24H', group='', sector='0',
+                    extra='AUTOTEST (Test)'),
                 AlarmRecord(
                     datetime=datetime.datetime(2023, 2, 3, 8, 37, 20),
                     event='ALARM_OFF', group='6', sector='0',
-                    extra='UITGESCH. CHARLIE'),
+                    extra='UITGESCH. CHARLIE (Uit)'),
                 AlarmRecord(
                     datetime=datetime.datetime(2023, 2, 2, 19, 9, 48),
                     event='ALARM_ON', group='5', sector='0',
-                    extra='VOLL. ING BOB'),
+                    extra='VOLL. ING BOB (In)'),
                 AlarmRecord(
                     datetime=datetime.datetime(2023, 2, 2, 10, 12, 5),
-                    event='24H', group='', sector='0', extra='AUTOTEST'),
+                    event='24H', group='', sector='0',
+                    extra='AUTOTEST (Test)'),
                 AlarmRecord(
                     datetime=datetime.datetime(2023, 2, 2, 8, 37, 11),
                     event='ALARM_OFF', group='1', sector='0',
-                    extra='UITGESCH. ALICE'),
+                    extra='UITGESCH. ALICE (Uit)'),
             ]
             self.assertEqual(expected_data, data)
 
             # data = [i for i in data if i.event in ('ALARM_ON', 'ALARM_OFF')]
             # os.unlink(CACHE_FILENAME)
+            return data
+
+        def test_html_table_to_dicts_ii(self):
+            with open('test_status_2.html') as fp:
+                data = fp.read()
+
+            data = html_table_to_dicts(data)
+            data = fix_dicts_datetime(data)
+            data = fix_dicts_who_did_what(data)
+            data = to_records(data)
+
+            expected_data = [
+                # vvvv-- maybe these should be merged into a single one -vvvv
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 15, 13, 54, 51),
+                    event='(log)', group='', sector='0',
+                    extra='Gebr.: Mark Evert Chaniciën'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 15, 13, 54, 51),
+                    event='(log)', group='', sector='0',
+                    extra='Resultaat : Test volgens plan verlopen'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 15, 13, 54, 51),
+                    event='Y-M', group='', sector='0',
+                    extra='Einde test Monteur'),
+                # ^^^^-- maybe these should be merged into a single one -^^^^
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 15, 13, 15,23),
+                    event='LPE', group='', sector='0',
+                    extra='-INSTALL. (Einde lokale progr.)'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 15, 13, 14, 45),
+                    event='24H', group='99', sector='0',
+                    extra='INST TEST INST. (Test)'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 15, 12, 14, 44),
+                    event='ALARM_OFF', group='98', sector='0',
+                    extra='ALM RESET MANAGR (Uit na alarm)'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 15, 12, 14, 41),
+                    event='ALARM_OFF', group='98', sector='0',
+                    extra='UITGESCH. MANAGR (Uit)'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 15, 12, 14, 39),
+                    event='HER', group='1034', sector='0',
+                    extra='-INBRAAK   GBM RAAM KANTOOR (Herstel)'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 15, 12, 14, 36),
+                    event='RES', group='98', sector='0',
+                    extra='ALARM RST MANAGR (Reset door gebruiker)'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 15, 12, 14, 23),
+                    event='INB', group='', sector='0',
+                    extra='RECENT IN (Alarm binnen 5 min. na In)'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 15, 12, 14, 20),
+                    event='INB', group='1034', sector='0',
+                    extra='INBRAAK   GBM RAAM KANTOOR (Inbraak)'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 15, 12, 13, 50),
+                    event='ALARM_ON', group='99', sector='0',
+                    extra='VOLL. ING INST. (In)'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 15, 12, 0, 26),
+                    event='LPB', group='', sector='0',
+                    extra='+INSTALL. (Start Lokale progr.)'),
+                # vvvv-- maybe these should be merged into a single one -vvvv
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 15, 11, 48, 50),
+                    event='(log)', group='', sector='0',
+                    extra='Gebr.: Mark Evert Chaniciën'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 15, 11, 48, 50),
+                    event='(log)', group='', sector='0',
+                    extra='Reden : Periodiek Onderhoud'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 15, 11, 48, 50),
+                    event='X-M', group='', sector='0',
+                    extra='Begin test Monteur'),
+                # ^^^^-- maybe these should be merged into a single one -^^^^
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 15, 10, 12, 15),
+                    event='24H', group='', sector='0',
+                    extra='AUTOTEST (Test)'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 15, 8, 42, 54),
+                    event='ALARM_OFF', group='6', sector='0',
+                    extra='UITGESCH. BOB (Uit)'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 14, 18, 56, 5),
+                    event='ALARM_ON', group='6', sector='0',
+                    extra='VOLL. ING BOB (In)'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 14, 10, 12, 16),
+                    event='24H', group='', sector='0',
+                    extra='AUTOTEST (Test)'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 14, 8, 27, 42),
+                    event='ALARM_OFF', group='14', sector='0',
+                    extra='UITGESCH. ALICE (Uit)'),
+            ]
+            self.assertEqual(expected_data, data)
+
             return data
 
     # Returns a test suite with a single test class. This is then run by
