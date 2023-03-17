@@ -45,12 +45,12 @@ class AlarmRecord(
         if (self.event == 'ALARM_ON' and info.startswith('VOLL. ING ') and
                 info.endswith(' (In)')):
             username = info[10:-5].lower()
-            info = f'by @{username}'
+            info = f'by <@{username}>'
 
         elif (self.event == 'ALARM_OFF' and info.startswith('UITGESCH. ') and
                 info.endswith(' (Uit)')):
             username = info[10:-6].lower()
-            info = f'by @{username}'
+            info = f'by <@{username}>'
 
         elif self.event == '24H' and info == 'AUTOTEST (Test)':
             info = '(autotest)'
@@ -68,9 +68,11 @@ class AlarmRecord(
 
 
 def send_slack_message(message):
+    data = json.dumps({'text': message, 'type': 'mrkdwn', 'verbatim': True})
+    print(f'sending: {data}')
     ret = requests.post(
-        SLACK_WEBHOOK_URL, data=json.dumps({'text': message}),
-        headers={'Content-Type': 'application/json'})
+        SLACK_WEBHOOK_URL, data=data, headers={
+            'Content-Type': 'application/json'})
     assert ret.status_code == 200, (ret, ret.text)
 
 
@@ -590,7 +592,7 @@ def test():
                     extra='Einde test Monteur'),
                 # ^^^^-- maybe these should be merged into a single one -^^^^
                 AlarmRecord(
-                    datetime=datetime.datetime(2023, 3, 15, 13, 15,23),
+                    datetime=datetime.datetime(2023, 3, 15, 13, 15, 23),
                     event='LPE', group='', sector='0',
                     extra='-INSTALL. (Einde lokale progr.)'),
                 AlarmRecord(
@@ -674,7 +676,7 @@ def test():
                     datetime=datetime.datetime(2023, 3, 14, 8, 27, 42),
                     event='ALARM_OFF', group='14', sector='0',
                     extra='UITGESCH. ALICE (Uit)')),
-                '2023-03-14 08:27:42: ALARM_OFF (G14/S0): by @alice')
+                '2023-03-14 08:27:42: ALARM_OFF (G14/S0): by <@alice>')
 
         def test_record_alarm_off(self):
             self.assertEqual(
@@ -682,7 +684,7 @@ def test():
                     datetime=datetime.datetime(2023, 3, 14, 18, 56, 5),
                     event='ALARM_ON', group='6', sector='0',
                     extra='VOLL. ING BOB (In)')),
-                '2023-03-14 18:56:05: ALARM_ON (G6/S0): by @bob')
+                '2023-03-14 18:56:05: ALARM_ON (G6/S0): by <@bob>')
 
         def test_record_autotest(self):
             self.assertEqual(
@@ -700,7 +702,6 @@ def test():
                     extra='INBRAAK   GBM RAAM KANTOOR (Inbraak)')),
                 ('2023-03-15 12:14:20: INB (G1034/S0): '
                  'INBRAAK   GBM RAAM KANTOOR (Inbraak) <-- <!channel>'))
-
 
     # Returns a test suite with a single test class. This is then run by
     # unittest.main().
