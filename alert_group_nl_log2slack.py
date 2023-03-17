@@ -45,12 +45,12 @@ class AlarmRecord(
         if (self.event == 'ALARM_ON' and info.startswith('VOLL. ING ') and
                 info.endswith(' (In)')):
             username = info[10:-5].lower()
-            info = f'by <!{username}>'
+            info = f'by @{username}'
 
         elif (self.event == 'ALARM_OFF' and info.startswith('UITGESCH. ') and
                 info.endswith(' (Uit)')):
             username = info[10:-6].lower()
-            info = f'by <!{username}>'
+            info = f'by @{username}'
 
         elif self.event == '24H' and info == 'AUTOTEST (Test)':
             info = '(autotest)'
@@ -674,7 +674,7 @@ def test():
                     datetime=datetime.datetime(2023, 3, 14, 8, 27, 42),
                     event='ALARM_OFF', group='14', sector='0',
                     extra='UITGESCH. ALICE (Uit)')),
-                '2023-03-14 08:27:42: ALARM_OFF (G14/S0): by <!alice>')
+                '2023-03-14 08:27:42: ALARM_OFF (G14/S0): by @alice')
 
         def test_record_alarm_off(self):
             self.assertEqual(
@@ -682,7 +682,7 @@ def test():
                     datetime=datetime.datetime(2023, 3, 14, 18, 56, 5),
                     event='ALARM_ON', group='6', sector='0',
                     extra='VOLL. ING BOB (In)')),
-                '2023-03-14 18:56:05: ALARM_ON (G6/S0): by <!bob>')
+                '2023-03-14 18:56:05: ALARM_ON (G6/S0): by @bob')
 
         def test_record_autotest(self):
             self.assertEqual(
