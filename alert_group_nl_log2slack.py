@@ -25,6 +25,7 @@ ALERTMOBILE_URL = 'https://alertmobile.alert-group.nl/koi_kb.php'
 MAX_FAIL_TIME = 1800
 SLEEP_AFTER_FETCH = 300
 SLEEP_AFTER_FAIL = 180
+SLACK_DOTDOT_BUG_WORKAROUND = False
 
 
 class AlarmRecord(
@@ -67,8 +68,15 @@ class AlarmRecord(
         return repr(str(self))
 
 
+def make_slack_message(message):
+    request = {'text': message, 'type': 'mrkdwn', 'verbatim': True}
+    if SLACK_DOTDOT_BUG_WORKAROUND:  # work around the "@.." issue on Android
+        request = {'blocks': [{'type': 'section', 'text': request}]}
+    return json.dumps(request)
+
+
 def send_slack_message(message):
-    data = json.dumps({'text': message, 'type': 'mrkdwn', 'verbatim': True})
+    data = make_slack_message(message)
     print(f'sending: {data}')
     ret = requests.post(
         SLACK_WEBHOOK_URL, data=data, headers={
@@ -702,6 +710,27 @@ def test():
                     extra='INBRAAK   GBM RAAM KANTOOR (Inbraak)')),
                 ('2023-03-15 12:14:20: INB (G1034/S0): '
                  'INBRAAK   GBM RAAM KANTOOR (Inbraak) <-- <!channel>'))
+
+        def test_make_slack_message(self):
+            global SLACK_DOTDOT_BUG_WORKAROUND
+            orig = SLACK_DOTDOT_BUG_WORKAROUND
+            try:
+                SLACK_DOTDOT_BUG_WORKAROUND = True
+                data = make_slack_message('bla <@schoon>')
+                self.assertEqual(
+                    data,
+                    ('{"blocks": [{"type": "section", "text": '
+                     '{"text": "bla <@schoon>", "type": "mrkdwn", '
+                     '"verbatim": true}}]}'))
+
+                SLACK_DOTDOT_BUG_WORKAROUND = False
+                data = make_slack_message('bla <@schoon>')
+                self.assertEqual(
+                    data,
+                    ('{"text": "bla <@schoon>", "type": "mrkdwn", '
+                     '"verbatim": true}'))
+            finally:
+                SLACK_DOTDOT_BUG_WORKAROUND = orig
 
     # Returns a test suite with a single test class. This is then run by
     # unittest.main().
