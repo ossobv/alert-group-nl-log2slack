@@ -18,6 +18,9 @@ import requests
 KLANT_NUMMER = os.environ.get('KLANT_NUMMER')
 KLANT_CODE = os.environ.get('KLANT_CODE', '')
 KLANT_GECRYPT = md5(KLANT_CODE.encode('ascii')).hexdigest()
+
+SLACK_API_BEARER = os.environ.get('SLACK_API_BEARER')  # xoxb-...
+SLACK_API_USERS_LIST = 'https://slack.com/api/users.list'
 SLACK_WEBHOOK_URL = os.environ.get('SLACK_WEBHOOK_URL')
 CACHE_FILENAME = (__file__.rsplit('.py', 1)[0] + '.cache')
 
@@ -26,6 +29,8 @@ MAX_FAIL_TIME = 1800
 SLEEP_AFTER_FETCH = 300
 SLEEP_AFTER_FAIL = 180
 SLACK_DOTDOT_BUG_WORKAROUND = False
+
+SLACK_USERMAP = {'alice': 'U0H87MYTC'}
 
 
 class AlarmRecord(
@@ -37,6 +42,13 @@ class AlarmRecord(
     def datetime_str(self):
         return self.datetime.strftime('%Y-%m-%d %H:%M:%S')
 
+    @staticmethod
+    def username_as_slack_mention(username):
+        slack_userid = SLACK_USERMAP.get(username)
+        if not slack_userid:
+            return username
+        return f'<@{slack_userid}>'
+
     def __str__(self):
         message = (
             '{0.datetime_str}: {0.event} (G{0.group}/S{0.sector})'
@@ -45,13 +57,13 @@ class AlarmRecord(
 
         if (self.event == 'ALARM_ON' and info.startswith('VOLL. ING ') and
                 info.endswith(' (In)')):
-            username = info[10:-5].lower()
-            info = f'by <@{username}>'
+            username = self.username_as_slack_mention(info[10:-5].lower())
+            info = f'by {username}'
 
         elif (self.event == 'ALARM_OFF' and info.startswith('UITGESCH. ') and
                 info.endswith(' (Uit)')):
-            username = info[10:-6].lower()
-            info = f'by <@{username}>'
+            username = self.username_as_slack_mention(info[10:-6].lower())
+            info = f'by {username}'
 
         elif self.event == '24H' and info == 'AUTOTEST (Test)':
             info = '(autotest)'
@@ -66,6 +78,32 @@ class AlarmRecord(
 
     def __repr__(self):
         return repr(str(self))
+
+
+def make_slack_usermap():
+    if not SLACK_API_BEARER:
+        print('no SLACK_API_BEARER token to get users.list')
+        return {}
+
+    ret = requests.get(
+        SLACK_API_USERS_LIST,
+        headers={'Authorization': f'Bearer {SLACK_API_BEARER}'})
+    if ret.status_code != 200:
+        print(f'failed to get users.list: {ret}')
+        return {}
+
+    try:
+        users_list = ret.json()
+    except Exception as e:
+        print(f'failed to parse users.list: {e}: {ret.text}')
+        return {}
+    try:
+        usermap = dict((i['name'], i['id']) for i in users_list['members'])
+    except Exception as e:
+        print(f'failed to parse users.list: {e}: {users_list}')
+        return {}
+
+    return usermap
 
 
 def make_slack_message(message):
@@ -684,7 +722,7 @@ def test():
                     datetime=datetime.datetime(2023, 3, 14, 8, 27, 42),
                     event='ALARM_OFF', group='14', sector='0',
                     extra='UITGESCH. ALICE (Uit)')),
-                '2023-03-14 08:27:42: ALARM_OFF (G14/S0): by <@alice>')
+                '2023-03-14 08:27:42: ALARM_OFF (G14/S0): by <@U0H87MYTC>')
 
         def test_record_alarm_off(self):
             self.assertEqual(
@@ -692,7 +730,7 @@ def test():
                     datetime=datetime.datetime(2023, 3, 14, 18, 56, 5),
                     event='ALARM_ON', group='6', sector='0',
                     extra='VOLL. ING BOB (In)')),
-                '2023-03-14 18:56:05: ALARM_ON (G6/S0): by <@bob>')
+                '2023-03-14 18:56:05: ALARM_ON (G6/S0): by bob')
 
         def test_record_autotest(self):
             self.assertEqual(
@@ -745,6 +783,10 @@ if __name__ == '__main__':
                 'SLEEP_AFTER_FETCH SLEEP_AFTER_FAIL'.split()):
             value = globals()[varname]
             print(f'# - {varname} = {value}')
+
+        SLACK_USERMAP = make_slack_usermap()
+        print(f'# - SLACK_USERMAP = ({len(SLACK_USERMAP)} entries)')
+
         fetch_logs_and_publish_forever()
     elif sys.argv[1:2] == ['test']:
         from unittest import main
