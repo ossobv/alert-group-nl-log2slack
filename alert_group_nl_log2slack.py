@@ -44,7 +44,7 @@ class AlarmRecord(
 
     @staticmethod
     def username_as_slack_mention(username):
-        slack_userid = SLACK_USERMAP.get(username)
+        slack_userid = SLACK_USERMAP.get(username.lower())
         if not slack_userid:
             return username
         return f'<@{slack_userid}>'
@@ -98,7 +98,10 @@ def make_slack_usermap():
         print(f'failed to parse users.list: {e}: {ret.text}')
         return {}
     try:
-        usermap = dict((i['name'], i['id']) for i in users_list['members'])
+        # usermap = dict((i['name'], i['id']) for i in users_list['members'])
+        usermap = dict(
+            (i['profile']['display_name'].lower(), i['id'])
+            for i in users_list['members'])
     except Exception as e:
         print(f'failed to parse users.list: {e}: {users_list}')
         return {}
