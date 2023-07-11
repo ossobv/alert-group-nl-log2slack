@@ -36,7 +36,7 @@ SLACK_USERMAP = {'alice': 'U0H87MYTC'}
 class AlarmRecord(
         namedtuple('AlarmRecord', 'datetime event group sector extra')):
     SORT_KEY = (lambda x: (x.datetime, x.event))
-    NORMAL_EVENTS = ('ALARM_ON', 'ALARM_OFF', '24H')
+    NORMAL_EVENTS = ('ALARM_ON', 'ALARM_OFF', '24H', 'OVERRIDE_ALARM_TIME')
 
     @property
     def datetime_str(self):
@@ -77,7 +77,7 @@ class AlarmRecord(
         return message
 
     def __repr__(self):
-        return repr(str(self))
+        return f'<AlarmRecord{self._asdict()}>'
 
 
 def make_slack_usermap():
@@ -214,9 +214,12 @@ def html_table_to_dicts(html_doc):
     columns = [i.text for i in table.thead.tr.find_all('th')]
     data = []
     for tr in table.tbody.find_all('tr'):
-        data.append(dict(
-            (columns[n], i.text.strip())
-            for n, i in enumerate(tr.find_all('td'))))
+        try:
+            data.append(dict(
+                (columns[n], i.text.strip())
+                for n, i in enumerate(tr.find_all('td'))))
+        except IndexError as e:
+            raise IndexError(str(tr.find_all('td'))) from e
 
     return data
 
@@ -412,6 +415,36 @@ def test():
                 'Groep': '',
                 'Omschrijving': '',
                 'Sector': '---',
+                'Tijd': '11/07/23'},
+               {'Aansluiting': 'E0123456',
+                'Alrm': 'INF',
+                'Groep': '12',
+                'Omschrijving': 'UITGESCH. BEWAAK',
+                'Sector': '0',
+                'Tijd': '00:22:03'},
+               {'Aansluiting': 'E0123456',
+                'Alrm': 'UIT',
+                'Groep': '12',
+                'Omschrijving': 'Uit',
+                'Sector': '0',
+                'Tijd': '00:22:03'},
+               {'Aansluiting': 'E0123456',
+                'Alrm': 'AFW',
+                'Groep': '',
+                'Omschrijving': '11-07-23 Bewaking',
+                'Sector': '0',
+                'Tijd': '00:17:25'},
+               {'Aansluiting': 'E0123456',
+                'Alrm': 'AFW',
+                'Groep': '',
+                'Omschrijving': '11-07-23 Afwijkende inschakeltijd 02:15',
+                'Sector': '0',
+                'Tijd': '00:17:25'},
+               {'Aansluiting': '',
+                'Alrm': '',
+                'Groep': '',
+                'Omschrijving': '',
+                'Sector': '---',
                 'Tijd': '03/02/23'},
                {'Aansluiting': 'E0123456',
                 'Alrm': 'INF',
@@ -486,6 +519,30 @@ def test():
             expected_data = [
                 {'Aansluiting': 'E0123456',
                  'Alrm': 'INF',
+                 'Groep': '12',
+                 'Omschrijving': 'UITGESCH. BEWAAK',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2023, 7, 11, 0, 22, 3)},
+                {'Aansluiting': 'E0123456',
+                 'Alrm': 'UIT',
+                 'Groep': '12',
+                 'Omschrijving': 'Uit',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2023, 7, 11, 0, 22, 3)},
+                {'Aansluiting': 'E0123456',
+                 'Alrm': 'AFW',
+                 'Groep': '',
+                 'Omschrijving': '11-07-23 Bewaking',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2023, 7, 11, 0, 17, 25)},
+                {'Aansluiting': 'E0123456',
+                 'Alrm': 'AFW',
+                 'Groep': '',
+                 'Omschrijving': '11-07-23 Afwijkende inschakeltijd 02:15',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2023, 7, 11, 0, 17, 25)},
+                {'Aansluiting': 'E0123456',
+                 'Alrm': 'INF',
                  'Groep': '',
                  'Omschrijving': 'AUTOTEST',
                  'Sector': '0',
@@ -550,6 +607,25 @@ def test():
             data = fix_dicts_who_did_what(data)
             expected_data = [
                 {'Aansluiting': 'E0123456',
+                 'Alrm': 'UIT',
+                 'Groep': '12',
+                 'Info': 'UITGESCH. BEWAAK',
+                 'Omschrijving': 'Uit',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2023, 7, 11, 0, 22, 3)},
+                {'Aansluiting': 'E0123456',
+                 'Alrm': 'AFW',
+                 'Groep': '',
+                 'Omschrijving': '11-07-23 Bewaking',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2023, 7, 11, 0, 17, 25)},
+                {'Aansluiting': 'E0123456',
+                 'Alrm': 'AFW',
+                 'Groep': '',
+                 'Omschrijving': '11-07-23 Afwijkende inschakeltijd 02:15',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2023, 7, 11, 0, 17, 25)},
+                {'Aansluiting': 'E0123456',
                  'Alrm': '24H',
                  'Groep': '',
                  'Info': 'AUTOTEST',
@@ -584,11 +660,25 @@ def test():
                  'Omschrijving': 'Uit',
                  'Sector': '0',
                  'Tijd': datetime.datetime(2023, 2, 2, 8, 37, 11)},
+
+
             ]
             self.assertEqual(expected_data, data)
 
             data = to_records(data)
             expected_data = [
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 7, 11, 0, 22, 3),
+                    event='ALARM_OFF', group='12', sector='0',
+                    extra='UITGESCH. BEWAAK (Uit)'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 7, 11, 0, 17, 25),
+                    event='OVERRIDE_ALARM_TIME', group='', sector='0',
+                    extra='11-07-23 Bewaking'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2023, 7, 11, 0, 17, 25),
+                    event='OVERRIDE_ALARM_TIME', group='', sector='0',
+                    extra='11-07-23 Afwijkende inschakeltijd 02:15'),
                 AlarmRecord(
                     datetime=datetime.datetime(2023, 2, 3, 10, 12, 5),
                     event='24H', group='', sector='0',
@@ -742,6 +832,22 @@ def test():
                     event='24H', group='', sector='0',
                     extra='AUTOTEST (Test)')),
                 '2023-03-15 10:12:15: 24H (G/S0): (autotest)')
+
+        def test_altered_lockdown_time(self):
+            self.assertEqual(
+                str(AlarmRecord(
+                    datetime=datetime.datetime(2023, 7, 11, 0, 17, 25),
+                    event='OVERRIDE_ALARM_TIME', group='', sector='0',
+                    extra='11-07-23 Afwijkende inschakeltijd 02:15')),
+                ('2023-07-11 00:17:25: OVERRIDE_ALARM_TIME (G/S0): '
+                 '11-07-23 Afwijkende inschakeltijd 02:15'))
+            self.assertEqual(
+                str(AlarmRecord(
+                    datetime=datetime.datetime(2023, 7, 11, 0, 17, 25),
+                    event='OVERRIDE_ALARM_TIME', group='', sector='0',
+                    extra='11-07-23 Bewaking')),
+                ('2023-07-11 00:17:25: OVERRIDE_ALARM_TIME (G/S0): '
+                 '11-07-23 Bewaking'))
 
         def test_record_uncommon(self):
             self.assertEqual(
