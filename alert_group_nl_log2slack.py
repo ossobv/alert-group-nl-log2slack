@@ -21,6 +21,7 @@ KLANT_GECRYPT = md5(KLANT_CODE.encode('ascii')).hexdigest()
 
 SLACK_API_BEARER = os.environ.get('SLACK_API_BEARER')  # xoxb-...
 SLACK_API_USERS_LIST = 'https://slack.com/api/users.list'
+SLACK_NO_MENTION_USERS = os.environ.get('SLACK_NO_MENTION_USERS', '').split()
 SLACK_WEBHOOK_URL = os.environ.get('SLACK_WEBHOOK_URL')
 CACHE_FILENAME = (__file__.rsplit('.py', 1)[0] + '.cache')
 
@@ -30,7 +31,7 @@ SLEEP_AFTER_FETCH = 300
 SLEEP_AFTER_FAIL = 180
 SLACK_DOTDOT_BUG_WORKAROUND = False
 
-SLACK_USERMAP = {'alice': 'U0H87MYTC'}
+SLACK_USERMAP = {'alice': 'U0H87MYTC', 'frank': 'U025CBXTP'}
 
 
 class AlarmRecord(
@@ -44,6 +45,8 @@ class AlarmRecord(
 
     @staticmethod
     def username_as_slack_mention(username):
+        if username in SLACK_NO_MENTION_USERS:
+            return username
         slack_userid = SLACK_USERMAP.get(username.lower())
         if not slack_userid:
             return username
@@ -704,7 +707,6 @@ def test():
 
             # data = [i for i in data if i.event in ('ALARM_ON', 'ALARM_OFF')]
             # os.unlink(CACHE_FILENAME)
-            return data
 
         def test_html_table_to_dicts_ii(self):
             with open('test_status_2.html') as fp:
@@ -807,9 +809,7 @@ def test():
             ]
             self.assertEqual(expected_data, data)
 
-            return data
-
-        def test_record_alarm_on(self):
+        def test_record_alarm_off(self):
             self.assertEqual(
                 str(AlarmRecord(
                     datetime=datetime.datetime(2023, 3, 14, 8, 27, 42),
@@ -817,13 +817,27 @@ def test():
                     extra='UITGESCH. ALICE (Uit)')),
                 '2023-03-14 08:27:42: ALARM_OFF (G14/S0): by <@U0H87MYTC>')
 
-        def test_record_alarm_off(self):
+        def test_record_alarm_on(self):
             self.assertEqual(
                 str(AlarmRecord(
                     datetime=datetime.datetime(2023, 3, 14, 18, 56, 5),
                     event='ALARM_ON', group='6', sector='0',
                     extra='VOLL. ING BOB (In)')),
                 '2023-03-14 18:56:05: ALARM_ON (G6/S0): by bob')
+
+        def test_record_alarm_no_mention(self):
+            global SLACK_NO_MENTION_USERS
+            orig = SLACK_NO_MENTION_USERS
+            try:
+                SLACK_NO_MENTION_USERS = ['frank']
+                self.assertEqual(
+                    str(AlarmRecord(
+                        datetime=datetime.datetime(2023, 3, 14, 8, 27, 42),
+                        event='ALARM_OFF', group='14', sector='0',
+                        extra='UITGESCH. FRANK (Uit)')),
+                    '2023-03-14 08:27:42: ALARM_OFF (G14/S0): by frank')
+            finally:
+                SLACK_NO_MENTION_USERS = orig
 
         def test_record_autotest(self):
             self.assertEqual(
