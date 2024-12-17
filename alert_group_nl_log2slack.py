@@ -33,6 +33,8 @@ SLACK_DOTDOT_BUG_WORKAROUND = False
 
 SLACK_USERMAP = {'alice': 'U0H87MYTC', 'frank': 'U025CBXTP'}
 
+HEALTH_FILE = os.environ.get('HEALTH_FILE', '')
+
 
 class AlarmRecord(
         namedtuple('AlarmRecord', 'datetime event group sector extra')):
@@ -90,7 +92,8 @@ def make_slack_usermap():
 
     ret = requests.get(
         SLACK_API_USERS_LIST,
-        headers={'Authorization': f'Bearer {SLACK_API_BEARER}'})
+        headers={'Authorization': f'Bearer {SLACK_API_BEARER}'},
+        timeout=10)
     if ret.status_code != 200:
         print(f'failed to get users.list: {ret}')
         return {}
@@ -123,8 +126,9 @@ def send_slack_message(message):
     data = make_slack_message(message)
     print(f'sending: {data}')
     ret = requests.post(
-        SLACK_WEBHOOK_URL, data=data, headers={
-            'Content-Type': 'application/json'})
+        SLACK_WEBHOOK_URL, data=data,
+        headers={'Content-Type': 'application/json'},
+        timeout=10)
     assert ret.status_code == 200, (ret, ret.text)
 
 
@@ -181,18 +185,20 @@ def dump_cookies(session, where):
 def login_and_fetch(klant_nummer, klant_gecrypt):
     # Session keeps cookies around.
     with requests.Session() as session:
-        ret = session.get(ALERTMOBILE_URL)
+        ret = session.get(ALERTMOBILE_URL, timeout=10)
         dump_cookies(session, 'first get')
         assert ret.status_code == 200, (ret, ret.text)
 
         ret = session.post(ALERTMOBILE_URL, data={
                 'klantnr': klant_nummer, 'klantcode': '',
-                'gecrypt': klant_gecrypt})
+                'gecrypt': klant_gecrypt}, timeout=10)
         dump_cookies(session, 'login post')
         assert ret.status_code == 200, (ret, ret.text)
 
         for attempt in range(10):
-            ret = session.get(f'{ALERTMOBILE_URL}?mscherm=status&div=historie')
+            ret = session.get(
+                f'{ALERTMOBILE_URL}?mscherm=status&div=historie',
+                timeout=10)
             dump_cookies(session, 'status get')
             assert ret.status_code == 200, (ret, ret.text)
 
@@ -382,6 +388,10 @@ def fetch_logs_with_retry():
 def fetch_logs_and_publish_forever():
     already_published = set()
 
+    if HEALTH_FILE != '':
+        with open(HEALTH_FILE, 'w'):
+            pass
+
     while True:
         data = set(fetch_logs_with_retry())
         not_published_yet = (data - already_published)
@@ -395,6 +405,9 @@ def fetch_logs_and_publish_forever():
             else:
                 send_slack_message(str(record))
                 print(f'sent message: {record}')
+
+        if HEALTH_FILE != '':
+            os.utime(HEALTH_FILE)
 
         time.sleep(300)
 
