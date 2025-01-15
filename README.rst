@@ -4,13 +4,15 @@ Alert Mobile alarm scrape
 Scrapes info from https://alertmobile.alert-group.nl/ and publishes last
 alarm notifications to Slack.
 
-Requirements::
+Required settings::
 
+    HEALTH_FILE = /run/healthz
     KLANT_NUMMER = E...
     KLANT_CODE = <pass>
     SLACK_WEBHOOK_URL = https://hooks.slack.com/services/T../B../a..
+    SLACK_API_BEARER = xoxb-...
+    SLACK_NO_MENTION_USERS = user1 user2
     TIMEZONE = Europe/Amsterdam  # used by Docker image
-    HEALTH_FILE = <file_path>
 
 Building::
 
@@ -42,8 +44,6 @@ Kubernetes deployment::
       SLACK_NO_MENTION_USERS: FIXME+FIXME=
       # Slack webhook URL: https://hooks.slack.com/services/...
       SLACK_WEBHOOK_URL: FIXME+FIXME=
-      # "Europe/Amsterdam"
-      TIMEZONE: RXVyb3BlL0Ftc3RlcmRhbQ==
     kind: Secret
     metadata:
       name: alert-group-nl-log2slack-config
@@ -70,6 +70,8 @@ Kubernetes deployment::
           - env:
             - name: HEALTH_FILE
               value: /run/healthz
+            - name: TIMEZONE
+              value: Europe/Amsterdam
             envFrom:
             - secretRef:
                 name: alert-group-nl-log2slack-config
