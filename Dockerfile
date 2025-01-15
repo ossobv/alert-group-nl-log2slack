@@ -7,7 +7,7 @@ ENV PYTHONUNBUFFERED=1
 RUN pip install BeautifulSoup4 requests phpserialize
 COPY alert_group_nl_log2slack.py /srv/
 ARG GITVERSION
-RUN echo "$GITVERSION (built $(date +%Y-%m-%d))" >/srv/version
+RUN test -n "$GITVERSION" && echo "$GITVERSION (built $(date +%Y-%m-%d))" >/srv/version
 CMD python3 -V && pip freeze && echo '.' && \
     echo 'Starting publish-forever...' $(cat /srv/version) && \
     ln -sf /usr/share/zoneinfo/${TIMEZONE:-Etc/UTC} /etc/localtime && \
