@@ -38,8 +38,11 @@ HEALTH_FILE = os.environ.get('HEALTH_FILE', '')
 
 class AlarmRecord(
         namedtuple('AlarmRecord', 'datetime event group sector extra')):
-    SORT_KEY = (lambda x: (x.datetime, x.event))
     NORMAL_EVENTS = ('ALARM_ON', 'ALARM_OFF', '24H', 'OVERRIDE_ALARM_TIME')
+
+    @staticmethod
+    def SORT_KEY(record):
+        return (record.datetime, record.event)
 
     @property
     def datetime_str(self):
@@ -60,15 +63,21 @@ class AlarmRecord(
             .format(self).rstrip())
         info = self.extra
 
-        if (self.event == 'ALARM_ON' and info.startswith('VOLL. ING ') and
-                info.endswith(' (In)')):
-            username = self.username_as_slack_mention(info[10:-5].lower())
-            info = f'by {username}'
+        if self.event == 'ALARM_ON' and info.startswith('VOLL. ING '):
+            if info.endswith(' (In)'):
+                username = self.username_as_slack_mention(info[10:-5].lower())
+                info = f'by {username}'
+            elif info.endswith(' In)') and info[-11:-9] == ' (':
+                username = self.username_as_slack_mention(info[10:-11].lower())
+                info = f'by {username}'
 
-        elif (self.event == 'ALARM_OFF' and info.startswith('UITGESCH. ') and
-                info.endswith(' (Uit)')):
-            username = self.username_as_slack_mention(info[10:-6].lower())
-            info = f'by {username}'
+        elif self.event == 'ALARM_OFF' and info.startswith('UITGESCH. '):
+            if info.endswith(' (Uit)'):
+                username = self.username_as_slack_mention(info[10:-6].lower())
+                info = f'by {username}'
+            elif info.endswith(' Uit)') and info[-12:-10] == ' (':
+                username = self.username_as_slack_mention(info[10:-12].lower())
+                info = f'by {username}'
 
         elif self.event == '24H' and info == 'AUTOTEST (Test)':
             info = '(autotest)'
@@ -254,7 +263,9 @@ def fix_dicts_datetime(data):
     new_data = []
     date = None
     for row in data:
-        if (row['Aansluiting'] == row['Alrm'] == row['Groep']
+        # The "Aansluiting" field is not shown in the verbose/long
+        # status, but it's shown in the short one.
+        if (row.get('Aansluiting', '') == row['Alrm'] == row['Groep']
                 == row['Omschrijving'] == '' and row['Sector'] == '---'):
             dd, mm, yy = row['Tijd'].split('/')
             date = datetime.date(2000 + int(yy), int(mm), int(dd))
@@ -290,7 +301,7 @@ def fix_dicts_who_did_what(data):
     for row in data:
         if row['Alrm'] == 'INF':
             if last_row is not None and (
-                    last_row['Aansluiting'] == row['Aansluiting'] and
+                    last_row.get('Aansluiting') == row.get('Aansluiting') and
                     last_row['Groep'] == row['Groep'] and
                     last_row['Sector'] == row['Sector'] and
                     last_row['Tijd'] == row['Tijd']):
@@ -298,7 +309,7 @@ def fix_dicts_who_did_what(data):
             else:
                 info = row
         elif info is not None:
-            assert row['Aansluiting'] == info['Aansluiting'], (row, info)
+            assert row.get('Aansluiting') == info.get('Aansluiting'), (row, info)
             assert row['Groep'] == info['Groep'], (row, info)
             assert row['Sector'] == info['Sector'], (row, info)
             assert row['Tijd'] == info['Tijd'], (row, info)
@@ -314,7 +325,8 @@ def fix_dicts_who_did_what(data):
 
 def to_records(data):
     new_data = []
-    assert all(i['Aansluiting'] == data[0]['Aansluiting'] for i in data), data
+    assert all(
+        i.get('Aansluiting') == data[0].get('Aansluiting') for i in data), data
     for row in data:
         event = {
                 'IN': 'ALARM_ON',
@@ -676,8 +688,6 @@ def test():
                  'Omschrijving': 'Uit',
                  'Sector': '0',
                  'Tijd': datetime.datetime(2023, 2, 2, 8, 37, 11)},
-
-
             ]
             self.assertEqual(expected_data, data)
 
@@ -822,7 +832,237 @@ def test():
             ]
             self.assertEqual(expected_data, data)
 
-        def test_record_alarm_off(self):
+        def test_html_table_to_dicts_iii(self):
+            with open('test_status_3.html') as fp:
+                data = fp.read()
+            return self._test_html_table_to_dicts_3_and_4(data)
+
+        def test_html_table_to_dicts_iv(self):
+            with open('test_status_4.html') as fp:
+                data = fp.read()
+            return self._test_html_table_to_dicts_3_and_4(data)
+
+        def _test_html_table_to_dicts_3_and_4(self, data):
+            data = html_table_to_dicts(data)
+
+            # We both have with and without "Aansluiting". Drop it for this test.
+            for value in data:
+                value.pop('Aansluiting', None)
+
+            expected_data = [
+                {'Alrm': '',
+                 'Groep': '',
+                 'Omschrijving': '',
+                 'Sector': '---',
+                 'Tijd': '15/01/25'},
+                {'Alrm': 'INF',
+                 'Groep': '7',
+                 'Omschrijving': 'VOLL. ING CHARLIE',
+                 'Sector': '0',
+                 'Tijd': '17:55:50'},
+                {'Alrm': 'IN',
+                 'Groep': '7',
+                 'Omschrijving': '17:54 In',
+                 'Sector': '0',
+                 'Tijd': '17:55:50'},
+                {'Alrm': 'INF',
+                 'Groep': '',
+                 'Omschrijving': 'AUTOTEST',
+                 'Sector': '0',
+                 'Tijd': '10:10:58'},
+                {'Alrm': '24H',
+                 'Groep': '',
+                 'Omschrijving': '10:10 Test',
+                 'Sector': '0',
+                 'Tijd': '10:10:58'},
+                {'Alrm': 'INF',
+                 'Groep': '8',
+                 'Omschrijving': 'UITGESCH. FRANK',
+                 'Sector': '0',
+                 'Tijd': '08:29:32'},
+                {'Alrm': 'UIT',
+                 'Groep': '8',
+                 'Omschrijving': '08:28 Uit',
+                 'Sector': '0',
+                 'Tijd': '08:29:32'},
+                {'Alrm': '',
+                 'Groep': '',
+                 'Omschrijving': '',
+                 'Sector': '---',
+                 'Tijd': '14/01/25'},
+                {'Alrm': 'INF',
+                 'Groep': '7',
+                 'Omschrijving': 'VOLL. ING CHARLIE',
+                 'Sector': '0',
+                 'Tijd': '18:05:24'},
+                {'Alrm': 'IN',
+                 'Groep': '7',
+                 'Omschrijving': '18:04 In',
+                 'Sector': '0',
+                 'Tijd': '18:05:24'},
+                {'Alrm': 'INF',
+                 'Groep': '',
+                 'Omschrijving': 'AUTOTEST',
+                 'Sector': '0',
+                 'Tijd': '10:10:58'},
+                {'Alrm': '24H',
+                 'Groep': '',
+                 'Omschrijving': '10:10 Test',
+                 'Sector': '0',
+                 'Tijd': '10:10:58'},
+                {'Alrm': 'INF',
+                 'Groep': '7',
+                 'Omschrijving': 'UITGESCH. CHARLIE',
+                 'Sector': '0',
+                 'Tijd': '08:41:01'},
+                {'Alrm': 'UIT',
+                 'Groep': '7',
+                 'Omschrijving': '08:40 Uit',
+                 'Sector': '0',
+                 'Tijd': '08:41:01'},
+            ]
+            self.assertEqual(expected_data, data)
+
+            data = fix_dicts_datetime(data)
+
+            expected_data = [
+                {'Alrm': 'INF',
+                 'Groep': '7',
+                 'Omschrijving': 'VOLL. ING CHARLIE',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2025, 1, 15, 17, 55, 50)},
+                {'Alrm': 'IN',
+                 'Groep': '7',
+                 'Omschrijving': '17:54 In',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2025, 1, 15, 17, 55, 50)},
+                {'Alrm': 'INF',
+                 'Groep': '',
+                 'Omschrijving': 'AUTOTEST',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2025, 1, 15, 10, 10, 58)},
+                {'Alrm': '24H',
+                 'Groep': '',
+                 'Omschrijving': '10:10 Test',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2025, 1, 15, 10, 10, 58)},
+                {'Alrm': 'INF',
+                 'Groep': '8',
+                 'Omschrijving': 'UITGESCH. FRANK',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2025, 1, 15, 8, 29, 32)},
+                {'Alrm': 'UIT',
+                 'Groep': '8',
+                 'Omschrijving': '08:28 Uit',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2025, 1, 15, 8, 29, 32)},
+                {'Alrm': 'INF',
+                 'Groep': '7',
+                 'Omschrijving': 'VOLL. ING CHARLIE',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2025, 1, 14, 18, 5, 24)},
+                {'Alrm': 'IN',
+                 'Groep': '7',
+                 'Omschrijving': '18:04 In',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2025, 1, 14, 18, 5, 24)},
+                {'Alrm': 'INF',
+                 'Groep': '',
+                 'Omschrijving': 'AUTOTEST',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2025, 1, 14, 10, 10, 58)},
+                {'Alrm': '24H',
+                 'Groep': '',
+                 'Omschrijving': '10:10 Test',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2025, 1, 14, 10, 10, 58)},
+                {'Alrm': 'INF',
+                 'Groep': '7',
+                 'Omschrijving': 'UITGESCH. CHARLIE',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2025, 1, 14, 8, 41, 1)},
+                {'Alrm': 'UIT',
+                 'Groep': '7',
+                 'Omschrijving': '08:40 Uit',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2025, 1, 14, 8, 41, 1)},
+            ]
+            self.assertEqual(expected_data, data)
+
+            data = fix_dicts_who_did_what(data)
+            expected_data = [
+                {'Alrm': 'IN',
+                 'Groep': '7',
+                 'Info': 'VOLL. ING CHARLIE',
+                 'Omschrijving': '17:54 In',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2025, 1, 15, 17, 55, 50)},
+                {'Alrm': '24H',
+                 'Groep': '',
+                 'Info': 'AUTOTEST',
+                 'Omschrijving': '10:10 Test',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2025, 1, 15, 10, 10, 58)},
+                {'Alrm': 'UIT',
+                 'Groep': '8',
+                 'Info': 'UITGESCH. FRANK',
+                 'Omschrijving': '08:28 Uit',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2025, 1, 15, 8, 29, 32)},
+                {'Alrm': 'IN',
+                 'Groep': '7',
+                 'Info': 'VOLL. ING CHARLIE',
+                 'Omschrijving': '18:04 In',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2025, 1, 14, 18, 5, 24)},
+                {'Alrm': '24H',
+                 'Groep': '',
+                 'Info': 'AUTOTEST',
+                 'Omschrijving': '10:10 Test',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2025, 1, 14, 10, 10, 58)},
+                {'Alrm': 'UIT',
+                 'Groep': '7',
+                 'Info': 'UITGESCH. CHARLIE',
+                 'Omschrijving': '08:40 Uit',
+                 'Sector': '0',
+                 'Tijd': datetime.datetime(2025, 1, 14, 8, 41, 1)},
+            ]
+            self.assertEqual(expected_data, data)
+
+            data = to_records(data)
+            expected_data = [
+                AlarmRecord(
+                    datetime=datetime.datetime(2025, 1, 15, 17, 55, 50),
+                    event='ALARM_ON', group='7', sector='0',
+                    extra='VOLL. ING CHARLIE (17:54 In)'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2025, 1, 15, 10, 10, 58),
+                    event='24H', group='', sector='0',
+                    extra='AUTOTEST (10:10 Test)'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2025, 1, 15, 8, 29, 32),
+                    event='ALARM_OFF', group='8', sector='0',
+                    extra='UITGESCH. FRANK (08:28 Uit)'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2025, 1, 14, 18, 5, 24),
+                    event='ALARM_ON', group='7', sector='0',
+                    extra='VOLL. ING CHARLIE (18:04 In)'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2025, 1, 14, 10, 10, 58),
+                    event='24H', group='', sector='0',
+                    extra='AUTOTEST (10:10 Test)'),
+                AlarmRecord(
+                    datetime=datetime.datetime(2025, 1, 14, 8, 41, 1),
+                    event='ALARM_OFF', group='7', sector='0',
+                    extra='UITGESCH. CHARLIE (08:40 Uit)'),
+            ]
+            self.assertEqual(expected_data, data)
+
+            # data = [i for i in data if i.event in ('ALARM_ON', 'ALARM_OFF')]
+            # os.unlink(CACHE_FILENAME)
+
+        def test_record_alarm_off_old(self):
             self.assertEqual(
                 str(AlarmRecord(
                     datetime=datetime.datetime(2023, 3, 14, 8, 27, 42),
@@ -830,13 +1070,48 @@ def test():
                     extra='UITGESCH. ALICE (Uit)')),
                 '2023-03-14 08:27:42: ALARM_OFF (G14/S0): by <@U0H87MYTC>')
 
-        def test_record_alarm_on(self):
+        def test_record_alarm_off(self):
+            "New formatting since 2024-12-10"
+            self.assertEqual(
+                str(AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 14, 18, 56, 5),
+                    event='ALARM_OFF', group='6', sector='0',
+                    extra='UITGESCH. ALICE (18:55 Uit)')),
+                '2023-03-14 18:56:05: ALARM_OFF (G6/S0): by <@U0H87MYTC>')
+
+        def test_record_alarm_on_old(self):
             self.assertEqual(
                 str(AlarmRecord(
                     datetime=datetime.datetime(2023, 3, 14, 18, 56, 5),
                     event='ALARM_ON', group='6', sector='0',
                     extra='VOLL. ING BOB (In)')),
                 '2023-03-14 18:56:05: ALARM_ON (G6/S0): by bob')
+
+        def test_record_alarm_on(self):
+            "New formatting since 2024-12-10"
+            self.assertEqual(
+                str(AlarmRecord(
+                    datetime=datetime.datetime(2023, 3, 14, 18, 56, 5),
+                    event='ALARM_ON', group='6', sector='0',
+                    extra='VOLL. ING BOB (18:55 In)')),
+                '2023-03-14 18:56:05: ALARM_ON (G6/S0): by bob')
+
+        def test_record_alarm_mention(self):
+            global SLACK_NO_MENTION_USERS, SLACK_USERMAP
+            orig = SLACK_NO_MENTION_USERS
+            orig2 = SLACK_USERMAP
+            try:
+                SLACK_NO_MENTION_USERS = ['not_frank']
+                SLACK_USERMAP = {'frank': '12345679'}
+                self.assertEqual(
+                    str(AlarmRecord(
+                        datetime=datetime.datetime(2023, 3, 14, 8, 27, 42),
+                        event='ALARM_OFF', group='14', sector='0',
+                        extra='UITGESCH. FRANK (Uit)')),
+                    '2023-03-14 08:27:42: ALARM_OFF (G14/S0): by <@12345679>')
+            finally:
+                SLACK_NO_MENTION_USERS = orig
+                SLACK_USERMAP = orig2
 
         def test_record_alarm_no_mention(self):
             global SLACK_NO_MENTION_USERS
